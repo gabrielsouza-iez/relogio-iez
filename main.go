@@ -2,10 +2,12 @@ package main
 
 import (
 	"fmt"
+	"image/color"
 	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
@@ -13,22 +15,73 @@ import (
 
 // Defina o horário de saída aqui (formato HH:MM)
 const horarioSaida = "17:00" // Seu horário de saída
+const imagePath = "./bannerIEZ.png"
 
 func main() {
 	a := app.New()
+
+	a.Settings().SetTheme(&meuTema{})
+
 	w := a.NewWindow("Fim do Turno") // Título da janela
 
 	// Define que a janela não pode ser redimensionada pelo usuário
-	w.SetFixedSize(true)
+	w.SetFixedSize(true) // Considere remover ou ajustar isso se a imagem tiver um tamanho diferente
 
 	// Cria um rótulo para exibir o tempo restante
 	tempoRestanteLabel := widget.NewLabel("Calculando...")
-	tempoRestanteLabel.Alignment = fyne.TextAlignCenter // Centraliza o texto
+	tempoRestanteLabel.Alignment = fyne.TextAlignCenter       // Centraliza o texto
+	tempoRestanteLabel.TextStyle = fyne.TextStyle{Bold: true} // Opcional: Deixar o texto em negrito
 
-	content := container.NewVBox(
-		widget.NewLabel("Tempo restante para ir embora:"), // Texto fixo
-		tempoRestanteLabel, // O rótulo que atualiza
+	// Cria os rótulos que ficarão sobre a imagem
+	textoFixoLabel := widget.NewLabel("Tempo restante para ir embora:")
+	textoFixoLabel.Alignment = fyne.TextAlignCenter
+	textoFixoLabel.TextStyle = fyne.TextStyle{Bold: true} // Opcional
+
+	espacadorVertical := canvas.NewRectangle(color.Transparent)
+	espacadorVertical.SetMinSize(fyne.NewSize(0, 20)) // Largura 0 (não ocupa espaço horizontal), Altura 10 pixels
+
+	// Container para os textos (para que fiquem centralizados e um sobre o outro)
+	textContainer := container.NewVBox(
+		textoFixoLabel,
+		espacadorVertical,
+		tempoRestanteLabel,
 	)
+
+	textWithBackground := container.NewStack(
+		// Retângulo de fundo. Ajuste a cor e a transparência (valor A de Alpha).
+		// RGBA: R=Red, G=Green, B=Blue, A=Alpha (0=transparente, 255=opaco)
+		canvas.NewRectangle(color.NRGBA{R: 0, G: 0, B: 0, A: 150}), // Preto semi-transparente (A:150 de 255)
+		container.NewPadded(textContainer),                         // Adiciona padding ao redor do VBox de textos
+	)
+
+	img := canvas.NewImageFromFile(imagePath)
+	if img == nil {
+		// Se a imagem não puder ser carregada, você pode mostrar um erro ou usar um placeholder
+		fmt.Println("Erro ao carregar a imagem:", imagePath)
+		// Como fallback, podemos criar um retângulo colorido ou deixar sem imagem
+		// Por exemplo, um retângulo cinza:
+		// fallbackRect := canvas.NewRectangle(color.Gray{Y: 50})
+		// fallbackRect.SetMinSize(fyne.NewSize(300, 100)) // Defina um tamanho mínimo
+		// img = fallbackRect // Isso não é um canvas.Image, então precisa de ajuste
+		// Neste caso, é mais simples prosseguir sem a imagem se ela falhar
+	} else {
+		img.FillMode = canvas.ImageFillStretch // Ou ImageFillContain, ImageFillOriginal, etc.
+		// Se quiser que a imagem não seja muito pequena, pode definir um tamanho mínimo para ela.
+		// img.SetMinSize(fyne.NewSize(400, 150)) // Exemplo de tamanho
+	}
+
+	var content fyne.CanvasObject
+	if img != nil {
+		// Centralize o container de texto COM fundo sobre a imagem
+		centeredTextWithBackground := container.NewCenter(textWithBackground)
+		content = container.NewStack(
+			img,                        // Imagem no fundo
+			centeredTextWithBackground, // Textos com seu próprio fundo, centralizados por cima
+		)
+	} else {
+		// Fallback se a imagem não carregar: apenas os textos (agora com seu fundo)
+		content = container.NewCenter(textWithBackground)
+	}
 
 	w.SetContent(content)
 
