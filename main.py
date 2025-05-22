@@ -4,11 +4,14 @@ from PIL import Image, ImageTk
 import datetime
 import threading
 import time
+import pygame
+import os
 
 LARGURA_JANELA = 400
 ALTURA_JANELA = 150
-VELOCIDADE = 5
+VELOCIDADE = 15
 IMAGEM_CAMINHO = "bannerIEZ.png"
+SOM_PATH = "som-do-zap-zap-estourado.mp3"
 
 class DVDApp:
     def __init__(self, root, horario_saida, voltar_callback):
@@ -25,10 +28,8 @@ class DVDApp:
         self.alert_shown = False
         self.bouncing_enabled = False
 
-        # Define tamanho da janela
         self.root.geometry(f"{LARGURA_JANELA}x{ALTURA_JANELA}+{self.pos_x}+{self.pos_y}")
 
-        # Imagem de fundo
         try:
             img = Image.open(IMAGEM_CAMINHO).resize((LARGURA_JANELA, ALTURA_JANELA))
             self.bg_image = ImageTk.PhotoImage(img)
@@ -37,12 +38,11 @@ class DVDApp:
         except Exception as e:
             print("Erro ao carregar imagem:", e)
 
-        # Labels sobre a imagem
         self.label_info = tk.Label(
             root,
             text="Tempo restante para ir embora:",
             fg="white",
-            bg="#ff6600",  # cor parecida com o fundo laranja
+            bg="#ff6600",
             font=("Arial", 10, "bold")
         )
         self.label_info.place(relx=0.5, rely=0.1, anchor=tk.CENTER)
@@ -53,19 +53,28 @@ class DVDApp:
         )
         self.label_timer.place(relx=0.5, rely=0.4, anchor=tk.CENTER)
 
-        # Botão para voltar à escolha do horário
         self.btn_voltar = tk.Button(root, text="Voltar", command=self.voltar)
         self.btn_voltar.place(relx=0.25, rely=0.75, anchor=tk.CENTER)
 
-        # Botão para iniciar/parar bouncing
         self.btn_toggle_bounce = tk.Button(root, text="Parar Bouncing", command=self.toggle_bouncing)
         self.btn_toggle_bounce.place(relx=0.75, rely=0.75, anchor=tk.CENTER)
+
+        self.brilho_valor = 0
+        self.brilho_direcao = 1
+        self.animar_brilho()
+
+        # Inicializa som
+        pygame.mixer.init()
+        if os.path.exists(SOM_PATH):
+            self.som = pygame.mixer.Sound(SOM_PATH)
+        else:
+            self.som = None
+            print("Arquivo de som não encontrado.")
 
         threading.Thread(target=self.atualizar_tempo, daemon=True).start()
         self.mover_janela()
 
     def voltar(self):
-        # Destrói a janela atual e chama o callback para reabrir escolha de horário
         self.root.withdraw()
         self.voltar_callback()
 
@@ -105,27 +114,55 @@ class DVDApp:
             time.sleep(1)
 
     def mover_janela(self):
+        self.tocar_som()
         if self.bouncing_enabled:
             screen_w = self.root.winfo_screenwidth()
             screen_h = self.root.winfo_screenheight()
 
+            hit_edge_x = False
+            hit_edge_y = False
+
             if self.pos_x + LARGURA_JANELA >= screen_w or self.pos_x <= 0:
                 self.vel_x = -self.vel_x
+                hit_edge_x = True
+
             if self.pos_y + ALTURA_JANELA >= screen_h or self.pos_y <= 0:
                 self.vel_y = -self.vel_y
+                hit_edge_y = True
 
             self.pos_x += self.vel_x
             self.pos_y += self.vel_y
 
             self.root.geometry(f"{LARGURA_JANELA}x{ALTURA_JANELA}+{self.pos_x}+{self.pos_y}")
 
-        self.root.after(30, self.mover_janela)
+            if hit_edge_x and hit_edge_y:
+                self.tocar_som()
 
+        self.root.after(10, self.mover_janela)
+
+    def tocar_som(self):
+        if self.som:
+            self.som.play()
+
+    def animar_brilho(self):
+        brilho = 155 + int(100 * abs(self.brilho_valor / 100))
+        cor_hex = f"#{brilho:02x}{80:02x}00"
+
+        self.label_info.config(bg=cor_hex)
+        self.label_timer.config(bg=cor_hex)
+        self.btn_voltar.config(bg=cor_hex, activebackground=cor_hex)
+        self.btn_toggle_bounce.config(bg=cor_hex, activebackground=cor_hex)
+
+        self.brilho_valor += self.brilho_direcao * 5
+        if self.brilho_valor >= 100 or self.brilho_valor <= 0:
+            self.brilho_direcao *= -1
+
+        self.root.after(50, self.animar_brilho)
 
 def escolher_horario_saida(root, callback):
-    hoje = datetime.datetime.today().weekday()  # 0 = segunda, 4 = sexta
+    hoje = datetime.datetime.today().weekday()
 
-    if hoje == 4:  # sexta-feira
+    if hoje == 4:
         callback("17:00")
         return
 
@@ -151,11 +188,10 @@ def escolher_horario_saida(root, callback):
 
 def main():
     root = tk.Tk()
-    root.withdraw()  # Esconde temporariamente
+    root.withdraw()
 
     def iniciar_app(horario_escolhido):
         root.deiconify()
-        # Passa a função para reabrir escolha de horário quando o botão voltar for pressionado
         app = DVDApp(root, horario_escolhido, voltar_callback=lambda: escolher_horario_saida(root, iniciar_app))
 
     escolher_horario_saida(root, iniciar_app)
