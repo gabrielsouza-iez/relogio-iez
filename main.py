@@ -9,7 +9,7 @@ import os
 
 LARGURA_JANELA = 400
 ALTURA_JANELA = 150
-VELOCIDADE = 15
+VELOCIDADE = 7
 IMAGEM_CAMINHO = "bannerIEZ.png"
 SOM_PATH = "som-do-zap-zap-estourado.mp3"
 
@@ -27,6 +27,7 @@ class DVDApp:
         self.vel_y = VELOCIDADE
         self.alert_shown = False
         self.bouncing_enabled = False
+        self.som_ativo = True
 
         self.root.geometry(f"{LARGURA_JANELA}x{ALTURA_JANELA}+{self.pos_x}+{self.pos_y}")
 
@@ -59,6 +60,12 @@ class DVDApp:
         self.btn_toggle_bounce = tk.Button(root, text="Parar Bouncing", command=self.toggle_bouncing)
         self.btn_toggle_bounce.place(relx=0.75, rely=0.75, anchor=tk.CENTER)
 
+        self.btn_toggle_sound = tk.Button(root, text="Desativar Som", command=self.toggle_sound)
+        self.btn_toggle_sound.place(relx=0.5, rely=0.85, anchor=tk.CENTER)
+
+        # Atalho para parar movimentação: barra de espaço
+        self.root.bind('<space>', lambda e: self.toggle_bouncing())
+
         self.brilho_valor = 0
         self.brilho_direcao = 1
         self.animar_brilho()
@@ -84,6 +91,13 @@ class DVDApp:
             self.btn_toggle_bounce.config(text="Parar Bouncing")
         else:
             self.btn_toggle_bounce.config(text="Iniciar Bouncing")
+
+    def toggle_sound(self):
+        self.som_ativo = not self.som_ativo
+        if self.som_ativo:
+            self.btn_toggle_sound.config(text="Desativar Som")
+        else:
+            self.btn_toggle_sound.config(text="Ativar Som")
 
     def atualizar_tempo(self):
         saida = datetime.datetime.strptime(self.horario_saida, "%H:%M").time()
@@ -114,7 +128,6 @@ class DVDApp:
             time.sleep(1)
 
     def mover_janela(self):
-        self.tocar_som()
         if self.bouncing_enabled:
             screen_w = self.root.winfo_screenwidth()
             screen_h = self.root.winfo_screenheight()
@@ -135,13 +148,13 @@ class DVDApp:
 
             self.root.geometry(f"{LARGURA_JANELA}x{ALTURA_JANELA}+{self.pos_x}+{self.pos_y}")
 
-            if hit_edge_x and hit_edge_y:
+            if hit_edge_x or hit_edge_y:
                 self.tocar_som()
 
         self.root.after(10, self.mover_janela)
 
     def tocar_som(self):
-        if self.som:
+        if self.som and self.som_ativo:
             self.som.play()
 
     def animar_brilho(self):
@@ -152,6 +165,7 @@ class DVDApp:
         self.label_timer.config(bg=cor_hex)
         self.btn_voltar.config(bg=cor_hex, activebackground=cor_hex)
         self.btn_toggle_bounce.config(bg=cor_hex, activebackground=cor_hex)
+        self.btn_toggle_sound.config(bg=cor_hex, activebackground=cor_hex)
 
         self.brilho_valor += self.brilho_direcao * 5
         if self.brilho_valor >= 100 or self.brilho_valor <= 0:
