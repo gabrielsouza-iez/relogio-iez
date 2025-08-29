@@ -124,6 +124,10 @@ class DVDApp:
         # Inicializa som
         pygame.mixer.init()
 
+        # Atalhos para aumentar/diminuir velocidade
+        self.root.bind('<Up>', lambda e: self.aumentar_velocidade())
+        self.root.bind('<Down>', lambda e: self.diminuir_velocidade())
+
         threading.Thread(target=self.atualizar_tempo, daemon=True).start()
         self.mover_janela()
 
@@ -197,7 +201,7 @@ class DVDApp:
             # Quando a janela encosta na borda, toca o som e seleciona uma nova imagem aleatória
             if hit_edge_x or hit_edge_y:
                 self.tocar_som()
-                self.proxima_imagem()  # Seleciona uma nova imagem aleatória sem repetição
+                self.proxima_imagem()  # Seleciona uma nova     imagem aleatória sem repetição
                 self.proximo_som()     # Seleciona um novo som aleatório sem repetição
 
         self.root.after(10, self.mover_janela)
@@ -287,6 +291,38 @@ class DVDApp:
         print(f"Alterando para imagem: {self.imagem_atual_caminho}")
         print(f"Imagens restantes: {len(self.imagens_disponiveis)}")
         self.carregar_imagem()
+
+    def aumentar_velocidade(self):
+        # Aumenta a velocidade em 30%, mas se for 1 ou -1, vai para 2 ou -2
+        if self.vel_x == 1:
+            self.vel_x = 2
+        elif self.vel_x == -1:
+            self.vel_x = -2
+        elif self.vel_x > 0:
+            self.vel_x = max(1, round(self.vel_x * 1.3))
+        else:
+            self.vel_x = min(-1, round(self.vel_x * 1.3))
+        if self.vel_y == 1:
+            self.vel_y = 2
+        elif self.vel_y == -1:
+            self.vel_y = -2
+        elif self.vel_y > 0:
+            self.vel_y = max(1, round(self.vel_y * 1.3))
+        else:
+            self.vel_y = min(-1, round(self.vel_y * 1.3))
+        print(f"Velocidade aumentada: vel_x={self.vel_x}, vel_y={self.vel_y}")
+
+    def diminuir_velocidade(self):
+        # Diminui a velocidade em 30%, mas nunca menor que 1 (ou -1)
+        if self.vel_x > 0:
+            self.vel_x = max(1, int(self.vel_x * 0.7))
+        else:
+            self.vel_x = min(-1, int(self.vel_x * 0.7))
+        if self.vel_y > 0:
+            self.vel_y = max(1, int(self.vel_y * 0.7))
+        else:
+            self.vel_y = min(-1, int(self.vel_y * 0.7))
+        print(f"Velocidade diminuída: vel_x={self.vel_x}, vel_y={self.vel_y}")
 
 def escolher_horario_saida(root, callback):
     hoje = datetime.datetime.today().weekday()
