@@ -7,11 +7,33 @@ import time
 import pygame
 import os
 
-LARGURA_JANELA = 400
-ALTURA_JANELA = 150
+LARGURA_JANELA = 520  # Aumentado em 30% (400 * 1.3)
+ALTURA_JANELA = 195   # Aumentado em 30% (150 * 1.3)
 VELOCIDADE = 7
 IMAGEM_CAMINHO = "bannerIEZ.png"
 SOM_PATH = "som-do-zap-zap-estourado.mp3"
+
+# Lista de imagens para alternar sequencialmente
+IMAGENS_DISPONIVEIS = [
+    "bannerIEZ.png",
+    "image/daniel.png",
+    "image/daniel2.png",
+    "image/daniel3.png",
+    "image/gabriel.png",
+    "image/gabriel2.png",
+    "image/guilherme.png",
+    "image/gustavo.png",
+    "image/murilo.png",
+    "image/vitor.png",
+    "image/william.png",
+    "image/felipe.png",
+    "image/felipe2.png",
+    "image/elementor.png",
+    "image/gustavoReacoes.png",
+    "image/jamalBieber.png",
+    "image/naruto.png",
+    "image/jesusPastel.png"
+]
 
 class DVDApp:
     def __init__(self, root, horario_saida, voltar_callback):
@@ -29,15 +51,14 @@ class DVDApp:
         self.bouncing_enabled = False
         self.som_ativo = True
 
+        # Índice da imagem atual
+        self.imagem_atual_index = 0
+        self.imagem_atual_caminho = IMAGENS_DISPONIVEIS[0]
+
         self.root.geometry(f"{LARGURA_JANELA}x{ALTURA_JANELA}+{self.pos_x}+{self.pos_y}")
 
-        try:
-            img = Image.open(IMAGEM_CAMINHO).resize((LARGURA_JANELA, ALTURA_JANELA))
-            self.bg_image = ImageTk.PhotoImage(img)
-            self.label_image = tk.Label(root, image=self.bg_image)
-            self.label_image.place(x=0, y=0, relwidth=1, relheight=1)
-        except Exception as e:
-            print("Erro ao carregar imagem:", e)
+        # Carrega a imagem inicial
+        self.carregar_imagem()
 
         self.label_info = tk.Label(
             root,
@@ -148,8 +169,10 @@ class DVDApp:
 
             self.root.geometry(f"{LARGURA_JANELA}x{ALTURA_JANELA}+{self.pos_x}+{self.pos_y}")
 
+            # Quando a janela encosta na borda, toca o som e alterna a imagem
             if hit_edge_x or hit_edge_y:
                 self.tocar_som()
+                self.proxima_imagem()  # Alterna para a próxima imagem na sequência
 
         self.root.after(10, self.mover_janela)
 
@@ -172,6 +195,32 @@ class DVDApp:
             self.brilho_direcao *= -1
 
         self.root.after(50, self.animar_brilho)
+
+    def carregar_imagem(self):
+        """Carrega a imagem atual e atualiza o label"""
+        try:
+            img = Image.open(self.imagem_atual_caminho).resize((LARGURA_JANELA, ALTURA_JANELA))
+            self.bg_image = ImageTk.PhotoImage(img)
+
+            # Se o label já existe, atualiza a imagem
+            if hasattr(self, 'label_image'):
+                self.label_image.config(image=self.bg_image)
+            else:
+                # Cria o label da imagem pela primeira vez
+                self.label_image = tk.Label(self.root, image=self.bg_image)
+                self.label_image.place(x=0, y=0, relwidth=1, relheight=1)
+
+        except Exception as e:
+            print(f"Erro ao carregar imagem {self.imagem_atual_caminho}:", e)
+            # Se falhar, tenta carregar a próxima imagem
+            self.proxima_imagem()
+
+    def proxima_imagem(self):
+        """Avança para a próxima imagem na sequência"""
+        self.imagem_atual_index = (self.imagem_atual_index + 1) % len(IMAGENS_DISPONIVEIS)
+        self.imagem_atual_caminho = IMAGENS_DISPONIVEIS[self.imagem_atual_index]
+        print(f"Alterando para imagem: {self.imagem_atual_caminho}")
+        self.carregar_imagem()
 
 def escolher_horario_saida(root, callback):
     hoje = datetime.datetime.today().weekday()

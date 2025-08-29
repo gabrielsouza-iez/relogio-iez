@@ -67,7 +67,7 @@ func main() {
 	} else {
 		img.FillMode = canvas.ImageFillStretch // Ou ImageFillContain, ImageFillOriginal, etc.
 		// Se quiser que a imagem não seja muito pequena, pode definir um tamanho mínimo para ela.
-		// img.SetMinSize(fyne.NewSize(400, 150)) // Exemplo de tamanho
+		// img.SetMinSize(fyne.NewSize(520, 195)) // Exemplo de tamanho (aumentado em 30%)
 	}
 
 	var content fyne.CanvasObject
