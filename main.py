@@ -6,12 +6,12 @@ import threading
 import time
 import pygame
 import os
+import random
 
 LARGURA_JANELA = 520  # Aumentado em 30% (400 * 1.3)
 ALTURA_JANELA = 195   # Aumentado em 30% (150 * 1.3)
 VELOCIDADE = 7
 IMAGEM_CAMINHO = "bannerIEZ.png"
-SOM_PATH = "som-do-zap-zap-estourado.mp3"
 
 # Lista de imagens para alternar sequencialmente
 IMAGENS_DISPONIVEIS = [
@@ -32,7 +32,24 @@ IMAGENS_DISPONIVEIS = [
     "image/gustavoReacoes.png",
     "image/jamalBieber.png",
     "image/naruto.png",
-    "image/jesusPastel.png"
+    "image/jesusPastel.png",
+    "image/bolsAlien.png",
+    "image/callSaul.png",
+    "image/cursedEgg.png"
+]
+
+# Lista de sons para alternar sequencialmente
+SONS_DISPONIVEIS = [
+    "sons/som-do-zap-zap-estourado.mp3",
+    "sons/serra.mp3",
+    "sons/zoeira-efeito-suspense.mp3",
+    "sons/mola-boina-boing.mp3",
+    "sons/luan-moto.mp3",
+    "sons/efeito-sonoro-alerta.mp3",
+    "sons/audio.mp3",
+    "sons/cavalo-ratinho.mp3",
+    "sons/efeito-sonoro-cutuco-correndo.mp3",
+    "sons/ui-rodrigo-faro.mp3"
 ]
 
 class DVDApp:
@@ -51,14 +68,27 @@ class DVDApp:
         self.bouncing_enabled = False
         self.som_ativo = True
 
-        # Índice da imagem atual
-        self.imagem_atual_index = 0
-        self.imagem_atual_caminho = IMAGENS_DISPONIVEIS[0]
+        # Sistema de seleção aleatória sem repetição para imagens
+        self.imagens_disponiveis = IMAGENS_DISPONIVEIS.copy()
+        self.imagens_usadas = []
+        self.imagem_atual_caminho = random.choice(self.imagens_disponiveis)
+        self.imagens_disponiveis.remove(self.imagem_atual_caminho)
+        self.imagens_usadas.append(self.imagem_atual_caminho)
+
+        # Sistema de seleção aleatória sem repetição para sons
+        self.sons_disponiveis = SONS_DISPONIVEIS.copy()
+        self.sons_usados = []
+        self.som_atual_caminho = random.choice(self.sons_disponiveis)
+        self.sons_disponiveis.remove(self.som_atual_caminho)
+        self.sons_usados.append(self.som_atual_caminho)
 
         self.root.geometry(f"{LARGURA_JANELA}x{ALTURA_JANELA}+{self.pos_x}+{self.pos_y}")
 
         # Carrega a imagem inicial
         self.carregar_imagem()
+
+        # Carrega o som inicial
+        self.carregar_som()
 
         self.label_info = tk.Label(
             root,
@@ -93,11 +123,6 @@ class DVDApp:
 
         # Inicializa som
         pygame.mixer.init()
-        if os.path.exists(SOM_PATH):
-            self.som = pygame.mixer.Sound(SOM_PATH)
-        else:
-            self.som = None
-            print("Arquivo de som não encontrado.")
 
         threading.Thread(target=self.atualizar_tempo, daemon=True).start()
         self.mover_janela()
@@ -169,16 +194,47 @@ class DVDApp:
 
             self.root.geometry(f"{LARGURA_JANELA}x{ALTURA_JANELA}+{self.pos_x}+{self.pos_y}")
 
-            # Quando a janela encosta na borda, toca o som e alterna a imagem
+            # Quando a janela encosta na borda, toca o som e seleciona uma nova imagem aleatória
             if hit_edge_x or hit_edge_y:
                 self.tocar_som()
-                self.proxima_imagem()  # Alterna para a próxima imagem na sequência
+                self.proxima_imagem()  # Seleciona uma nova imagem aleatória sem repetição
+                self.proximo_som()     # Seleciona um novo som aleatório sem repetição
 
         self.root.after(10, self.mover_janela)
 
     def tocar_som(self):
         if self.som and self.som_ativo:
             self.som.play()
+
+    def carregar_som(self):
+        """Carrega o som atual"""
+        try:
+            if os.path.exists(self.som_atual_caminho):
+                self.som = pygame.mixer.Sound(self.som_atual_caminho)
+                print(f"Som carregado: {self.som_atual_caminho}")
+            else:
+                self.som = None
+                print(f"Arquivo de som não encontrado: {self.som_atual_caminho}")
+        except Exception as e:
+            print(f"Erro ao carregar som {self.som_atual_caminho}:", e)
+            self.som = None
+
+    def proximo_som(self):
+        """Seleciona um som aleatório sem repetição"""
+        # Se todos os sons foram usados, reinicia o baralho
+        if not self.sons_disponiveis:
+            print("Todos os sons foram tocados! Reiniciando o baralho...")
+            self.sons_disponiveis = SONS_DISPONIVEIS.copy()
+            self.sons_usados.clear()
+        
+        # Seleciona um som aleatório dos disponíveis
+        self.som_atual_caminho = random.choice(self.sons_disponiveis)
+        self.sons_disponiveis.remove(self.som_atual_caminho)
+        self.sons_usados.append(self.som_atual_caminho)
+        
+        print(f"Alterando para som: {self.som_atual_caminho}")
+        print(f"Sons restantes: {len(self.sons_disponiveis)}")
+        self.carregar_som()
 
     def animar_brilho(self):
         brilho = 155 + int(100 * abs(self.brilho_valor / 100))
@@ -212,14 +268,24 @@ class DVDApp:
 
         except Exception as e:
             print(f"Erro ao carregar imagem {self.imagem_atual_caminho}:", e)
-            # Se falhar, tenta carregar a próxima imagem
+            # Se falhar, tenta carregar uma nova imagem aleatória
             self.proxima_imagem()
 
     def proxima_imagem(self):
-        """Avança para a próxima imagem na sequência"""
-        self.imagem_atual_index = (self.imagem_atual_index + 1) % len(IMAGENS_DISPONIVEIS)
-        self.imagem_atual_caminho = IMAGENS_DISPONIVEIS[self.imagem_atual_index]
+        """Seleciona uma imagem aleatória sem repetição"""
+        # Se todas as imagens foram usadas, reinicia o baralho
+        if not self.imagens_disponiveis:
+            print("Todas as imagens foram mostradas! Reiniciando o baralho...")
+            self.imagens_disponiveis = IMAGENS_DISPONIVEIS.copy()
+            self.imagens_usadas.clear()
+        
+        # Seleciona uma imagem aleatória das disponíveis
+        self.imagem_atual_caminho = random.choice(self.imagens_disponiveis)
+        self.imagens_disponiveis.remove(self.imagem_atual_caminho)
+        self.imagens_usadas.append(self.imagem_atual_caminho)
+        
         print(f"Alterando para imagem: {self.imagem_atual_caminho}")
+        print(f"Imagens restantes: {len(self.imagens_disponiveis)}")
         self.carregar_imagem()
 
 def escolher_horario_saida(root, callback):
